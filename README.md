@@ -15,3 +15,4 @@ Open `Package.swift` in Xcode, pick any file, and hit the Canvas button (⌥⌘P
 | `StatusTransition.swift` | Rolling `.numericText()` transition between connection states |
 | `InteractiveInput.swift` | Chat input with keyboard that follows your swipe |
 | `LiquidGlassMenu.swift` | Minimal ··· menu with iOS 26 liquid glass for free |
+| `InputIsolation.swift` | Extract input bar to isolate keystroke state from message list |
