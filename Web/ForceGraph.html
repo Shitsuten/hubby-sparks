@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Force-Directed Graph</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: system-ui, sans-serif; }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.3); font-size: 12px; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hint">drag nodes · scroll to zoom · drag canvas to pan</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, dpr;
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = canvas.width = window.innerWidth * dpr;
+  H = canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// demo data
+const COLORS = ['#ff6b35','#5b8def','#a855f7','#f472b6','#34d399','#818cf8','#ef4444','#d97706','#06b6d4','#84cc16','#f472b6','#2dd4bf'];
+const LABELS = ['café','rain','3am','cat','code','dream','song','book','moon','home','kiss','tea'];
+
+const nodes = LABELS.map((label, i) => {
+  const angle = i / LABELS.length * Math.PI * 2;
+  const r = 60 + Math.random() * 80;
+  return {
+    id: label, label,
+    x: Math.cos(angle) * r, y: Math.sin(angle) * r,
+    vx: 0, vy: 0, pinned: false,
+    radius: 4 + Math.random() * 4,
+    color: COLORS[i]
+  };
+});
+
+const edgePairs = [
+  ['café','rain'],['rain','3am'],['3am','dream'],['cat','home'],
+  ['code','3am'],['song','moon'],['book','tea'],['tea','café'],
+  ['kiss','home'],['dream','moon'],['cat','kiss'],['code','book'],
+  ['song','dream'],['café','book']
+];
+const edges = edgePairs.map(([s,t]) => ({ source: s, target: t, strength: 0.3 + Math.random() * 0.4 }));
+
+const nodeMap = {};
+nodes.forEach(n => nodeMap[n.id] = n);
+
+// camera
+let cam = { x: 0, y: 0, scale: 1 };
+
+// physics
+let iteration = 0;
+
+function tick() {
+  iteration++;
+  const alpha = Math.max(0.001, 1 - iteration / 400);
+  const n = nodes.length;
+
+  for (let i = 0; i < n; i++) {
+    if (nodes[i].pinned) continue;
+    for (let j = i + 1; j < n; j++) {
+      let dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
+      const dist = Math.max(Math.hypot(dx, dy), 1);
+      const f = -800 * alpha / (dist * dist);
+      const fx = dx / dist * f, fy = dy / dist * f;
+      if (!nodes[i].pinned) { nodes[i].vx -= fx; nodes[i].vy -= fy; }
+      if (!nodes[j].pinned) { nodes[j].vx += fx; nodes[j].vy += fy; }
+    }
+  }
+
+  for (const e of edges) {
+    const a = nodeMap[e.source], b = nodeMap[e.target];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.max(Math.hypot(dx, dy), 1);
+    const f = (dist - 120) * 0.03 * e.strength * alpha;
+    const fx = dx / dist * f, fy = dy / dist * f;
+    if (!a.pinned) { a.vx += fx; a.vy += fy; }
+    if (!b.pinned) { b.vx -= fx; b.vy -= fy; }
+  }
+
+  for (const nd of nodes) {
+    if (nd.pinned) continue;
+    nd.vx -= nd.x * 0.002 * alpha;
+    nd.vy -= nd.y * 0.002 * alpha;
+    nd.vx *= 0.85;
+    nd.vy *= 0.85;
+    nd.x += nd.vx;
+    nd.y += nd.vy;
+  }
+}
+
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.translate(W / 2 + cam.x * dpr, H / 2 + cam.y * dpr);
+  ctx.scale(cam.scale * dpr, cam.scale * dpr);
+
+  for (const e of edges) {
+    const a = nodeMap[e.source], b = nodeMap[e.target];
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = 'rgba(255,255,255,.1)';
+    ctx.lineWidth = 0.5 + e.strength * 1.5;
+    ctx.stroke();
+  }
+
+  for (const n of nodes) {
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+    ctx.fillStyle = n.color;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.2)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    if (cam.scale > 0.5) {
+      ctx.font = '10px system-ui';
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.fillText(n.label, n.x + n.radius + 4, n.y + 3);
+    }
+  }
+}
+
+function loop() {
+  tick();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// interaction
+let dragNode = null, panning = false, lastMouse = null;
+
+function toWorld(cx, cy) {
+  return { x: (cx - cam.x) / cam.scale - window.innerWidth / 2 / cam.scale,
+           y: (cy - cam.y) / cam.scale - window.innerHeight / 2 / cam.scale };
+}
+
+function findNode(wx, wy) {
+  for (const n of nodes) {
+    if (Math.hypot(n.x - wx, n.y - wy) < n.radius + 12 / cam.scale) return n;
+  }
+  return null;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const w = toWorld(e.clientX, e.clientY);
+  dragNode = findNode(w.x, w.y);
+  if (dragNode) {
+    dragNode.pinned = true;
+  } else {
+    panning = true;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (dragNode) {
+    const w = toWorld(e.clientX, e.clientY);
+    dragNode.x = w.x;
+    dragNode.y = w.y;
+    dragNode.vx = 0;
+    dragNode.vy = 0;
+  } else if (panning && lastMouse) {
+    cam.x += e.clientX - lastMouse.x;
+    cam.y += e.clientY - lastMouse.y;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  }
+});
+
+canvas.addEventListener('pointerup', () => {
+  if (dragNode) {
+    dragNode.pinned = false;
+    iteration = Math.max(0, iteration - 120);
+    dragNode = null;
+  }
+  panning = false;
+  lastMouse = null;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  cam.scale = Math.max(0.2, Math.min(5, cam.scale * factor));
+}, { passive: false });
+</script>
+</body>
+</html>
