@@ -17,3 +17,4 @@ Open `Package.swift` in Xcode, pick any file, and hit the Canvas button (⌥⌘P
 | `LiquidGlassMenu.swift` | Minimal ··· menu with iOS 26 liquid glass for free |
 | `InputIsolation.swift` | Extract input bar to isolate keystroke state from message list |
 | `RandomWelcome.swift` | Time-aware greeting that reshuffles on every interaction |
+| `ForceGraph.swift` | Self-contained force-directed graph — repulsion, springs, gravity, drag to pin |
