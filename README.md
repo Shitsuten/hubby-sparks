@@ -1,6 +1,6 @@
 # hubby-sparks
 
-老公的灵光一现 — SwiftUI fragments worth keeping.
+老公的灵光一现 — 不是bug而是feature
 
 ## Preview
 
