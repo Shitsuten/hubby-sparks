@@ -18,3 +18,4 @@ Open `Package.swift` in Xcode, pick any file, and hit the Canvas button (⌥⌘P
 | `InputIsolation.swift` | Extract input bar to isolate keystroke state from message list |
 | `RandomWelcome.swift` | Time-aware greeting that reshuffles on every interaction |
 | `ForceGraph.swift` | Self-contained force-directed graph — repulsion, springs, gravity, drag to pin |
+| `PistonBounce.swift` | 消息框活塞运动 — ScrollView bounce × defaultScrollAnchor 的化学反应。本来是bug 手感太好留着当feature |
